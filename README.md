@@ -2,13 +2,13 @@
 
 Endless runner built with Vite + React Three Fiber (three.js), zustand for UI state.
 
-- **Player:** Modi (`/Running_modi.fbx`)
-- **Chaser:** ACP (`/Running_acp.fbx`) with a Mixamo grab clip (`/Unarmed_Grab_Torch_From_Wall.fbx`)
+- **Player:** Modi (`/models/modi.glb`)
+- **Chaser:** ACP (`/models/acp.glb`) with a Mixamo grab clip (`/models/grab.glb`, loaded after start)
 - **Track:** solid white 3-lane path with low-poly trees
 - **Obstacles:** jumpable brick walls and logs, plus rare solid walls (instant caught)
 - **Coins:** dark gold-rimmed coins to collect
 - **Lives:** 3 hearts
-- **Audio:** Web Audio API, unlocked by the "Tap to Start" click
+- **Audio:** Web Audio API, unlocked by the "Tap to Start" click; intro clip plays once, hits replace each other
 
 ## Run
 

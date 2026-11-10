@@ -1,12 +1,13 @@
 // ---- Assets (all live in /public) ----
-export const PLAYER_FBX = '/Running_modi.fbx';
-export const CHASER_FBX = '/Running_acp.fbx';
-export const GRAB_FBX = '/Unarmed_Grab_Torch_From_Wall.fbx';
+export const PLAYER_MODEL = '/models/modi.glb';
+export const CHASER_MODEL = '/models/acp.glb';
+export const GRAB_MODEL = '/models/grab.glb';
+
 
 export const GAME_TITLE = 'Bhag Modi Bhag';
 export const GAME_SUBTITLE = 'Meme Chase';
 
-// These Mixamo FBX exports are already in metres (~1.79 m tall).
+// Source models are already in metres (~1.79 m tall).
 export const MODEL_SCALE = 1;
 
 // ---- Track ----

@@ -1,24 +1,24 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { useFBX } from '@react-three/drei';
+import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
-import { MODEL_SCALE, PLAYER_FBX } from '../constants';
+import { MODEL_SCALE, PLAYER_MODEL } from '../constants';
 import { g } from '../gameState';
 import { useGame } from '../store';
 
-/** The player: Modi, running down the track on the actual FBX model. */
+/** The player: Modi, running down the track on the actual model. */
 export function Player() {
-  const fbx = useFBX(PLAYER_FBX);
+  const { scene: model, animations } = useGLTF(PLAYER_MODEL);
   const root = useRef<THREE.Group>(null!);
   const lean = useRef<THREE.Group>(null!);
   const facing = useRef<THREE.Group>(null!);
   const status = useGame((s) => s.status);
 
-  const mixer = useMemo(() => new THREE.AnimationMixer(fbx), [fbx]);
-  const run = useMemo(() => mixer.clipAction(fbx.animations[0]), [mixer, fbx]);
+  const mixer = useMemo(() => new THREE.AnimationMixer(model), [model]);
+  const run = useMemo(() => mixer.clipAction(animations[0]), [mixer, animations]);
 
   useEffect(() => {
-    fbx.traverse((o) => {
+    model.traverse((o) => {
       if ((o as THREE.Mesh).isMesh) {
         o.castShadow = true;
         o.frustumCulled = false;
@@ -28,7 +28,7 @@ export function Player() {
     return () => {
       mixer.stopAllAction();
     };
-  }, [fbx, mixer, run]);
+  }, [model, mixer, run]);
 
   useFrame((_, dt) => {
     const caught = status === 'caught';
@@ -56,9 +56,11 @@ export function Player() {
     <group ref={root}>
       <group ref={lean}>
         <group ref={facing} rotation={[0, Math.PI, 0]}>
-          <primitive object={fbx} scale={MODEL_SCALE} />
+          <primitive object={model} scale={MODEL_SCALE} />
         </group>
       </group>
     </group>
   );
 }
+
+useGLTF.preload(PLAYER_MODEL);

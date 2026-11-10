@@ -12,8 +12,34 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="mobile-web-app-capable" content="yes" />
     <title>Bhag Modi Bhag: Meme Chase</title>
+    <link rel="preload" href="/models/modi.glb" as="fetch" crossorigin="anonymous" />
+    <link rel="preload" href="/models/acp.glb" as="fetch" crossorigin="anonymous" />
+    <style>
+      #boot {
+        position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column;
+        align-items: center; justify-content: center; gap: 14px; background: #0b1526;
+        color: #fff; font-family: 'Trebuchet MS', system-ui, sans-serif; text-align: center;
+      }
+      #boot .boot-kicker { font-size: 11px; letter-spacing: 5px; opacity: .7; }
+      #boot .boot-title {
+        font-size: clamp(30px, 9vw, 62px); font-weight: 900; letter-spacing: 1px;
+        background: linear-gradient(180deg, #fff 30%, #ffd54f 100%);
+        -webkit-background-clip: text; background-clip: text; color: transparent;
+      }
+      #boot .boot-spinner {
+        width: 30px; height: 30px; border-radius: 50%;
+        border: 3px solid rgba(255, 255, 255, .2); border-top-color: #ffb300;
+        animation: boot-spin .8s linear infinite;
+      }
+      @keyframes boot-spin { to { transform: rotate(360deg); } }
+    </style>
   </head>
   <body>
+    <div id="boot">
+      <div class="boot-kicker">RUN FOR YOUR LIFE</div>
+      <div class="boot-title">BHAG MODI BHAG</div>
+      <div class="boot-spinner"></div>
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

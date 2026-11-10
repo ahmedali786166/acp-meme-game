@@ -100,7 +100,7 @@ export function UI() {
           <p className="hint">← → switch lane &nbsp;·&nbsp; ↑ jump &nbsp;·&nbsp; ↓ roll</p>
           <p className="hint small">(swipe on mobile)</p>
           <button disabled={!ready} onClick={start}>
-            {ready ? 'TAP TO START' : `LOADING ${Math.round(progress)}%`}
+            {ready ? 'TAP TO START' : 'LOADING…'}
           </button>
           <InstallInvite />
         </div>

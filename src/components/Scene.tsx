@@ -1,5 +1,5 @@
-import { useFBX } from '@react-three/drei';
-import { CHASER_FBX, GRAB_FBX, PLAYER_FBX } from '../constants';
+import { useGLTF } from '@react-three/drei';
+import { CHASER_MODEL, PLAYER_MODEL } from '../constants';
 import { CameraRig } from './CameraRig';
 import { Chaser } from './Chaser';
 import { Coins } from './Coins';
@@ -8,9 +8,8 @@ import { Obstacles } from './Obstacles';
 import { Player } from './Player';
 import { Track } from './Track';
 
-useFBX.preload(PLAYER_FBX);
-useFBX.preload(CHASER_FBX);
-useFBX.preload(GRAB_FBX);
+useGLTF.preload(PLAYER_MODEL);
+useGLTF.preload(CHASER_MODEL);
 
 export function Scene() {
   return (

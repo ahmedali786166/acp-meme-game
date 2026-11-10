@@ -4,7 +4,7 @@ import {
   MAX_SPEED, ROLL_H, SPAWN_Z, STAND_H,
 } from '../constants';
 import { g, OBS_DIMS, Obstacle, spawnCoinTrail, spawnObstacleRow } from '../gameState';
-import { play } from '../audio';
+import { play, playCoin, stop } from '../audio';
 import { useGame } from '../store';
 
 const PLAYER_HALF_W = 0.36;
@@ -18,11 +18,12 @@ function advanceWorld(dt: number) {
 }
 
 function die(by?: Obstacle) {
-  // keep the lethal wall waist-high in the steady end shot, exactly like the
-  // reference: the two characters stay visible above it while ACP grabs Modi
-  if (by?.type === 'solid') {
-    by.type = 'wall';
+  if (by) {
+    // stage the lethal obstacle in front of the pair, like the reference shot:
+    // the two characters face the camera from behind a waist-high brick wall
+    by.type = by.type === 'solid' ? 'wall' : by.type;
     by.hit = true;
+    by.z = 1.15;
   }
   g.speed = 0; // stop the world scrolling immediately
   g.lives = 0;
@@ -44,7 +45,13 @@ function hitObstacle(o: Obstacle) {
 
   g.invuln = INVULN_TIME;
   g.chaserGapTarget = CHASER_GAPS[3 - g.lives];
-  play('hit');
+  if (g.lives === 2) {
+    play('firstTouch');
+  } else if (g.lives === 1) {
+    // the second touch replaces the first one instead of overlapping it
+    stop('firstTouch');
+    play('secondTouch');
+  }
 }
 
 function collectCoins() {
@@ -63,7 +70,7 @@ function collectCoins() {
     g.coins = remaining;
     g.coinCount += picked;
     useGame.getState().setCoins(g.coinCount);
-    play('coin');
+    playCoin();
   }
 }
 

@@ -1,26 +1,33 @@
-type SoundName = 'bg' | 'jump' | 'coin' | 'hit' | 'caught';
+type SoundName = 'start' | 'jump' | 'firstTouch' | 'secondTouch' | 'caught';
 
 const FILES: Record<SoundName, string> = {
-  bg: '/start.mp3',
+  start: '/start.mp3',
   jump: '/jump.mp3',
-  coin: '/first_touch.mp3',
-  hit: '/second_touch.mp3',
+  firstTouch: '/first_touch.mp3',
+  secondTouch: '/second_touch.mp3',
   caught: '/pakda_gya.mp3',
 };
 
 const VOLUME: Record<SoundName, number> = {
-  bg: 0.55,
+  start: 0.6,
   jump: 0.7,
-  coin: 0.85,
-  hit: 0.9,
+  firstTouch: 0.9,
+  secondTouch: 0.9,
   caught: 1,
 };
+
+interface Voice {
+  source: AudioBufferSourceNode;
+  gain: GainNode;
+}
 
 let ctx: AudioContext | null = null;
 let bgSource: AudioBufferSourceNode | null = null;
 let loadPromise: Promise<void> | null = null;
 const buffers: Partial<Record<SoundName, AudioBuffer>> = {};
 const rawPromises = new Map<SoundName, Promise<ArrayBuffer>>();
+const voices = new Map<SoundName, Voice>();
+let lastCoinAt = 0;
 
 function audioContext() {
   if (!ctx) {
@@ -83,32 +90,79 @@ export function initAudio() {
   return loadPromise;
 }
 
+export function stop(name: SoundName) {
+  const voice = voices.get(name);
+  if (!voice) return;
+  voices.delete(name);
+  try {
+    voice.source.stop();
+  } catch {
+    // already finished
+  }
+  voice.source.disconnect();
+  voice.gain.disconnect();
+}
+
 export function play(name: SoundName) {
   const ac = ctx;
   const buffer = buffers[name];
   if (!ac || !buffer) return;
   if (ac.state === 'suspended') void ac.resume();
+  stop(name); // retrigger cleanly instead of stacking voices
   const source = ac.createBufferSource();
   source.buffer = buffer;
   const gain = ac.createGain();
   gain.gain.value = VOLUME[name];
   source.connect(gain).connect(ac.destination);
+  source.onended = () => {
+    if (voices.get(name)?.source === source) voices.delete(name);
+  };
   source.start();
+  voices.set(name, { source, gain });
+}
+
+/** Short two-note coin chime; no audio asset needed and it never stacks up. */
+export function playCoin() {
+  const ac = ctx;
+  if (!ac) return;
+  const now = ac.currentTime;
+  if (now - lastCoinAt < 0.06) return;
+  lastCoinAt = now;
+  if (ac.state === 'suspended') void ac.resume();
+  const gain = ac.createGain();
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.exponentialRampToValueAtTime(0.28, now + 0.012);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.32);
+  gain.connect(ac.destination);
+  for (const [freq, delay] of [
+    [1318.5, 0], // E6
+    [1975.5, 0.075], // B6
+  ] as const) {
+    const osc = ac.createOscillator();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(freq, now + delay);
+    osc.connect(gain);
+    osc.start(now + delay);
+    osc.stop(now + 0.34);
+  }
 }
 
 export function startBg() {
   const ac = ctx;
-  const buffer = buffers.bg;
+  const buffer = buffers.start;
   if (!ac || !buffer || bgSource) return;
   if (ac.state === 'suspended') void ac.resume();
   const gain = ac.createGain();
-  gain.gain.value = VOLUME.bg;
+  gain.gain.value = VOLUME.start;
   const source = ac.createBufferSource();
   source.buffer = buffer;
-  source.loop = true;
+  source.loop = false; // plays exactly once per run
   source.connect(gain).connect(ac.destination);
   source.start();
   bgSource = source;
+  source.onended = () => {
+    if (bgSource === source) bgSource = null;
+  };
 }
 
 export function stopBg() {
@@ -131,5 +185,10 @@ export function preloadAudio() {
 
 /** Dev-only diagnostics, used by the browser test harness. */
 export function getAudioDebug() {
-  return { state: ctx?.state ?? 'none', loaded: Object.keys(buffers), bg: bgSource !== null };
+  return {
+    state: ctx?.state ?? 'none',
+    loaded: Object.keys(buffers),
+    bg: bgSource !== null,
+    voices: [...voices.keys()],
+  };
 }

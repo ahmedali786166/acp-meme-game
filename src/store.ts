@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { initAudio, play, startBg, stopBg } from './audio';
+import { initAudio, play, startBg, stop, stopBg } from './audio';
 import { resetGame } from './gameState';
 import { START_LIVES } from './constants';
 
@@ -54,6 +54,8 @@ export const useGame = create<GameStore>((set, get) => ({
   caught: () => {
     if (get().status !== 'playing') return;
     stopBg();
+    stop('firstTouch');
+    stop('secondTouch');
     play('caught'); // exactly once, on lives = 0 or a solid wall hit
     const finalDistance = Math.floor(get().distance);
     const best = Math.max(get().best, finalDistance);
