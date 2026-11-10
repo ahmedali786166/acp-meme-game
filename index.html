@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-    <meta name="theme-color" content="#0b1526" />
+    <meta name="theme-color" content="#0b1c4d" />
     <meta name="description" content="Bhag Modi Bhag: Meme Chase — an endless runner where Modi runs from the Monster ACP." />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" type="image/png" href="/icons/icon-192.png" />
@@ -17,28 +17,33 @@
     <style>
       #boot {
         position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column;
-        align-items: center; justify-content: center; gap: 14px; background: #0b1526;
+        align-items: center; justify-content: center; gap: 26px; background: #0b1c4d;
         color: #fff; font-family: 'Trebuchet MS', system-ui, sans-serif; text-align: center;
       }
-      #boot .boot-kicker { font-size: 11px; letter-spacing: 5px; opacity: .7; }
+      #boot .boot-loading { position: absolute; top: 7%; font-size: 17px; font-weight: 800; letter-spacing: .5px; }
       #boot .boot-title {
-        font-size: clamp(30px, 9vw, 62px); font-weight: 900; letter-spacing: 1px;
-        background: linear-gradient(180deg, #fff 30%, #ffd54f 100%);
-        -webkit-background-clip: text; background-clip: text; color: transparent;
+        font-size: clamp(32px, 9vw, 54px); font-weight: 900; letter-spacing: 1px;
+        text-transform: uppercase; color: #ffd21f;
+        -webkit-text-stroke: 6px #fff; paint-order: stroke fill;
+        text-shadow: 0 5px 0 #d96f00, 0 10px 16px rgba(0, 0, 0, .4);
       }
-      #boot .boot-spinner {
-        width: 30px; height: 30px; border-radius: 50%;
-        border: 3px solid rgba(255, 255, 255, .2); border-top-color: #ffb300;
-        animation: boot-spin .8s linear infinite;
+      #boot .boot-bar {
+        width: min(78vw, 380px); height: 28px; border-radius: 4px; overflow: hidden;
+        background: #101a3c; position: relative; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .12);
       }
-      @keyframes boot-spin { to { transform: rotate(360deg); } }
+      #boot .boot-bar span {
+        display: block; height: 100%; width: 30%;
+        background: linear-gradient(180deg, #ff9d1c, #f26a00);
+        animation: boot-fill 1.2s ease-in-out infinite alternate;
+      }
+      @keyframes boot-fill { from { width: 20%; } to { width: 80%; } }
     </style>
   </head>
   <body>
     <div id="boot">
-      <div class="boot-kicker">RUN FOR YOUR LIFE</div>
-      <div class="boot-title">BHAG MODI BHAG</div>
-      <div class="boot-spinner"></div>
+      <div class="boot-loading">Loading</div>
+      <div class="boot-title">Bhag Modi Bhag</div>
+      <div class="boot-bar"><span></span></div>
     </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>

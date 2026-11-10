@@ -12,7 +12,46 @@ function Heart({ filled }: { filled: boolean }) {
   );
 }
 
-function InstallInvite() {
+function Coin({ className }: { className?: string }) {
+  return (
+    <svg className={className ? `coin ${className}` : 'coin'} viewBox="0 0 32 32" aria-hidden>
+      <circle cx="16" cy="16" r="14" fill="#f9b400" stroke="#c87600" strokeWidth="2" />
+      <circle cx="16" cy="16" r="10.5" fill="#ffd83d" stroke="#e39a00" strokeWidth="1.5" />
+      <path d="M16 9.2l1.9 4.1 4.5.5-3.3 3.1.9 4.5-4-2.3-4 2.3.9-4.5-3.3-3.1 4.5-.5z" fill="#ff8a00" />
+    </svg>
+  );
+}
+
+function InstallIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 4v10" />
+      <path d="m7.5 10 4.5 4.5L16.5 10" />
+      <path d="M5 19h14" />
+    </svg>
+  );
+}
+
+function ShareIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden fill="currentColor">
+      <circle cx="18" cy="5.5" r="2.6" />
+      <circle cx="6" cy="12" r="2.6" />
+      <circle cx="18" cy="18.5" r="2.6" />
+      <path d="m8.3 10.8 7.4-4M8.3 13.2l7.4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function PlayIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden fill="currentColor">
+      <path d="M8 5.5v13l11-6.5z" />
+    </svg>
+  );
+}
+
+function useInstallPrompt() {
   const [installable, setInstallable] = useState(false);
   const [installed, setInstalled] = useState(true);
   const [toast, setToast] = useState('');
@@ -44,19 +83,63 @@ function InstallInvite() {
     }
   };
 
+  return { installed, toast, install };
+}
+
+function Logo() {
   return (
-    <div className="install-invite">
-      <div className="ghost-row">
+    <div className="logo">
+      <h1>{GAME_TITLE}</h1>
+      <h2>{GAME_SUBTITLE}</h2>
+    </div>
+  );
+}
+
+function MenuActions() {
+  const { installed, toast, install } = useInstallPrompt();
+  return (
+    <div className="menu-actions">
+      <div className="menu-buttons">
         {!installed && (
-          <button className="ghost" onClick={install}>
+          <button className="cartoon-btn install" onClick={install}>
+            <span className="btn-icon">
+              <InstallIcon />
+            </span>
             Install App
           </button>
         )}
-        <button className="ghost" onClick={() => void inviteFriends()}>
+        <button className="cartoon-btn invite" onClick={() => void inviteFriends()}>
+          <span className="btn-icon">
+            <ShareIcon />
+          </span>
           Invite Friends
         </button>
       </div>
       {toast && <p className="toast">{toast}</p>}
+    </div>
+  );
+}
+
+function LoadingScreen() {
+  const { progress } = useProgress();
+  const pct = Math.round(progress);
+  return (
+    <div className="overlay loading">
+      <div className="load-head">
+        <span>Loading</span>
+        <span className="load-dots">
+          <i />
+          <i />
+          <i />
+        </span>
+      </div>
+      <div className="load-center">
+        <Logo />
+        <div className="load-bar">
+          <div className="load-fill" style={{ width: `${pct}%` }} />
+          <span className="load-text">{pct}%</span>
+        </div>
+      </div>
     </div>
   );
 }
@@ -66,60 +149,103 @@ export function UI() {
   const distance = useGame((s) => s.distance);
   const coins = useGame((s) => s.coins);
   const lives = useGame((s) => s.lives);
+  const best = useGame((s) => s.best);
   const showGameOver = useGame((s) => s.showGameOver);
   const start = useGame((s) => s.start);
   const { progress } = useProgress();
   const ready = progress >= 100;
+  const { installed, toast, install } = useInstallPrompt();
 
   return (
     <div className="ui">
-      {status !== 'menu' && (
+      {status === 'playing' && (
         <div className="hud">
-          <div className="hud-box">
-            <span className="hud-label">DISTANCE</span>
-            <span className="hud-value">{distance} m</span>
-          </div>
-          <div className="hud-box hud-coins">
-            <span className="coin-icon" aria-hidden />
-            <span className="hud-value">{coins}</span>
-          </div>
-          <div className="hud-box hud-hearts">
+          <div className="hud-hearts">
             {Array.from({ length: START_LIVES }, (_, i) => (
               <Heart key={i} filled={i < lives} />
             ))}
+          </div>
+          <div className="hud-right">
+            <div className="score-chip">
+              <span className="score-mult">x1</span>
+              <span className="score-value">{String(distance).padStart(6, '0')}</span>
+            </div>
+            <div className="coin-chip">
+              <span className="coin-value">{coins}</span>
+              <Coin />
+            </div>
           </div>
         </div>
       )}
 
       {status === 'menu' && (
-        <div className="overlay">
-          <p className="kicker">RUN FOR YOUR LIFE</p>
-          <h1>{GAME_TITLE}</h1>
-          <h2>{GAME_SUBTITLE}</h2>
-          <p className="hint">← → switch lane &nbsp;·&nbsp; ↑ jump &nbsp;·&nbsp; ↓ roll</p>
-          <p className="hint small">(swipe on mobile)</p>
-          <button disabled={!ready} onClick={start}>
-            {ready ? 'TAP TO START' : 'LOADING…'}
-          </button>
-          <InstallInvite />
-        </div>
+        <>
+          {!ready && <LoadingScreen />}
+          <div className="overlay menu">
+            <div className="menu-top">
+              <div className="top-run-chip">
+                <span>TOP RUN</span>
+                <b>{best} m</b>
+              </div>
+              <div className="menu-hearts">
+                {Array.from({ length: START_LIVES }, (_, i) => (
+                  <Heart key={i} filled />
+                ))}
+              </div>
+            </div>
+            <Logo />
+            <div className="menu-spacer" />
+            <div className="menu-play">
+              <button className="press-play" disabled={!ready} onClick={start}>
+                {ready ? 'Press to Play' : 'Loading…'}
+              </button>
+              <p className="hint">← → lanes &nbsp;·&nbsp; ↑ jump &nbsp;·&nbsp; ↓ roll &nbsp;·&nbsp; swipe on mobile</p>
+            </div>
+            <MenuActions />
+          </div>
+        </>
       )}
 
       {status === 'caught' && showGameOver && (
         <div className="overlay caught">
-          <div className="caught-card">
+          <div className="save-card">
+            <div className="save-timer" aria-hidden>
+              <i />
+            </div>
             <h1 className="caught-title">CAUGHT!</h1>
             <p className="caught-sub">The Monster ACP got you.</p>
-            <p className="caught-line">
-              Distance: <b>{distance}m</b>
-            </p>
-            <p className="caught-line">
-              Coins Collected: <b>{coins}</b>
-            </p>
-            <button className="run-again" onClick={start}>
-              RUN AGAIN
+            <div className="stat-rows">
+              <div className="stat-row">
+                <span>Distance</span>
+                <b>{distance} m</b>
+              </div>
+              <div className="stat-row">
+                <span>Coins</span>
+                <b className="stat-coins">
+                  <Coin />
+                  {coins}
+                </b>
+              </div>
+            </div>
+            <button className="save-btn green" onClick={start}>
+              Run Again
+              <span className="btn-badge">
+                <PlayIcon />
+              </span>
             </button>
-            <InstallInvite />
+            <button className="save-btn purple" onClick={() => void inviteFriends()}>
+              Invite Friends
+              <span className="btn-badge">
+                <ShareIcon />
+              </span>
+            </button>
+            {!installed && (
+              <button className="install-chip" onClick={install}>
+                <InstallIcon />
+                Install
+              </button>
+            )}
+            {toast && <p className="toast">{toast}</p>}
           </div>
         </div>
       )}
