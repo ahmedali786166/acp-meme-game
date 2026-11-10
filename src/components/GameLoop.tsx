@@ -1,94 +1,140 @@
 import { useFrame } from '@react-three/fiber';
 import {
   BASE_SPEED, CHASER_GAPS, DESPAWN_Z, GRAVITY, INVULN_TIME, LANE_LERP, LANE_W,
-  MAX_MISTAKES, MAX_SPEED, ROLL_H, SPAWN_Z, STAND_H,
+  MAX_SPEED, ROLL_H, SPAWN_Z, STAND_H,
 } from '../constants';
-import { g, OBS_DIMS, Obstacle, spawnRow } from '../gameState';
-import { playSound } from '../audio';
+import { g, OBS_DIMS, Obstacle, spawnCoinTrail, spawnObstacleRow } from '../gameState';
+import { play } from '../audio';
 import { useGame } from '../store';
 
-const PLAYER_HALF_W = 0.35;
+const PLAYER_HALF_W = 0.36;
 const PLAYER_HALF_Z = 0.4;
 
 function advanceWorld(dt: number) {
   const d = g.speed * dt;
   g.distance += d;
   for (const o of g.obstacles) o.z += d;
+  for (const c of g.coins) c.z += d;
 }
 
-function onHit(o: Obstacle, front: boolean) {
-  if (g.invuln > 0 || o.hit) return;
+function die(by?: Obstacle) {
+  // keep the lethal wall waist-high in the steady end shot, exactly like the
+  // reference: the two characters stay visible above it while ACP grabs Modi
+  if (by?.type === 'solid') {
+    by.type = 'wall';
+    by.hit = true;
+  }
+  g.speed = 0; // stop the world scrolling immediately
+  g.lives = 0;
+  g.chaserGapTarget = CHASER_GAPS[3];
+  useGame.getState().setLives(0);
+  useGame.getState().caught();
+}
+
+function hitObstacle(o: Obstacle) {
   o.hit = true;
-  const store = useGame.getState();
+  const solid = o.type === 'solid';
+  g.lives = solid ? 0 : Math.max(0, g.lives - 1);
+  useGame.getState().setLives(g.lives);
 
-  // Crashing head-on into a train/wall = instant "caught"
-  if (o.type === 'train' && front) {
-    g.chaserGapTarget = CHASER_GAPS[3];
-    store.caught();
+  if (solid || g.lives === 0) {
+    die(o);
     return;
   }
 
-  g.mistakes++;
-  store.setMistakes(g.mistakes);
-
-  if (g.mistakes >= MAX_MISTAKES) {
-    g.chaserGapTarget = CHASER_GAPS[3];
-    store.caught();
-    return;
-  }
-
-  g.chaserGapTarget = CHASER_GAPS[g.mistakes]; // chaser closes in
   g.invuln = INVULN_TIME;
-  playSound(g.mistakes === 1 ? 'first_touch' : 'second_touch');
-  if (o.type === 'train') g.lane = g.prevLane; // side-scrape: bounce back to old lane
+  g.chaserGapTarget = CHASER_GAPS[3 - g.lives];
+  play('hit');
+}
+
+function collectCoins() {
+  if (!g.coins.length) return;
+  const remaining = [];
+  let picked = 0;
+  for (const coin of g.coins) {
+    const dx = Math.abs(coin.lane * LANE_W - g.x);
+    if (dx < 0.72 && Math.abs(coin.z) < 0.9) {
+      picked++;
+      continue;
+    }
+    remaining.push(coin);
+  }
+  if (picked > 0) {
+    g.coins = remaining;
+    g.coinCount += picked;
+    useGame.getState().setCoins(g.coinCount);
+    play('coin');
+  }
+}
+
+function collideObstacles() {
+  // player hitbox: feet at g.y, head at g.y + height
+  const py0 = g.y;
+  const py1 = g.y + (g.rolling ? ROLL_H : STAND_H);
+
+  for (const o of g.obstacles) {
+    if (o.hit) continue;
+    const dims = OBS_DIMS[o.type];
+    if (Math.abs(o.lane * LANE_W - g.x) >= dims.halfW + PLAYER_HALF_W) continue;
+
+    const leading = o.z + dims.depth / 2;
+    const trailing = o.z - dims.depth / 2;
+    if (!(leading > -PLAYER_HALF_Z && trailing < PLAYER_HALF_Z)) continue;
+    if (!(py0 < dims.height && py1 > 0)) continue;
+
+    hitObstacle(o);
+    if (useGame.getState().status !== 'playing') return;
+  }
 }
 
 function updatePlaying(dt: number) {
   // speed ramps with distance
-  g.speed = Math.min(MAX_SPEED, BASE_SPEED + g.distance * 0.003);
+  g.speed = Math.min(MAX_SPEED, BASE_SPEED + g.distance * 0.0025);
 
-  // --- lane-switching math: exponential smoothing toward lane centre ---
+  // lane switch: exponential smoothing toward the lane centre
   g.targetX = g.lane * LANE_W;
   g.x += (g.targetX - g.x) * Math.min(1, LANE_LERP * dt);
 
-  // --- jump physics ---
+  // jump physics
   g.vy -= GRAVITY * dt;
   g.y += g.vy * dt;
-  if (g.y <= 0) { g.y = 0; g.vy = 0; }
+  if (g.y <= 0) {
+    g.y = 0;
+    g.vy = 0;
+  }
 
-  // --- roll timer ---
-  if (g.rolling) { g.rollT -= dt; if (g.rollT <= 0) g.rolling = false; }
+  if (g.rolling) {
+    g.rollT -= dt;
+    if (g.rollT <= 0) g.rolling = false;
+  }
   if (g.invuln > 0) g.invuln -= dt;
 
   advanceWorld(dt);
 
-  // --- spawn / despawn ---
-  g.sinceSpawn += g.speed * dt;
-  if (g.sinceSpawn >= g.nextGap) { g.sinceSpawn = 0; spawnRow(SPAWN_Z); }
-  if (g.obstacles.length && g.obstacles.some((o) => o.z > DESPAWN_Z + o.len / 2)) {
-    g.obstacles = g.obstacles.filter((o) => o.z <= DESPAWN_Z + o.len / 2);
+  // spawn / despawn
+  g.sinceObstacle += g.speed * dt;
+  if (g.sinceObstacle >= g.nextObstacleGap) {
+    g.sinceObstacle = 0;
+    spawnObstacleRow(SPAWN_Z);
+  }
+  g.sinceCoin += g.speed * dt;
+  if (g.sinceCoin >= g.nextCoinGap) {
+    g.sinceCoin = 0;
+    spawnCoinTrail(SPAWN_Z);
   }
 
-  // --- AABB collisions (player sits at z = 0) ---
-  const py0 = g.y;
-  const py1 = g.y + (g.rolling ? ROLL_H : STAND_H);
-  for (const o of g.obstacles) {
-    if (o.hit) continue;
-    const d = OBS_DIMS[o.type];
-    const dx = Math.abs(o.lane * LANE_W - g.x);
-    if (dx >= d.halfW + PLAYER_HALF_W) continue;
-    const leading = o.z + o.len / 2; // edge nearest the player
-    const trailing = o.z - o.len / 2;
-    if (!(leading > -PLAYER_HALF_Z && trailing < PLAYER_HALF_Z)) continue;
-    if (!(py0 < d.yMax && py1 > d.yMin)) continue;
-    // "front" = we just reached the obstacle's face; otherwise we scraped its side
-    const front = leading < PLAYER_HALF_Z + 0.5;
-    onHit(o, front);
+  if (g.obstacles.some((o) => o.z > DESPAWN_Z)) {
+    g.obstacles = g.obstacles.filter((o) => o.z <= DESPAWN_Z);
+  }
+  if (g.coins.some((c) => c.z > DESPAWN_Z)) {
+    g.coins = g.coins.filter((c) => c.z <= DESPAWN_Z);
   }
 
-  // --- score (only touch React state when the integer changes) ---
-  const score = Math.floor(g.distance / 2);
-  if (score !== useGame.getState().score) useGame.getState().setScore(score);
+  collectCoins();
+  collideObstacles();
+
+  const meters = Math.floor(g.distance);
+  if (meters !== useGame.getState().distance) useGame.getState().setDistance(meters);
 }
 
 /** Runs all gameplay logic once per frame. Renders nothing. */
@@ -97,11 +143,7 @@ export function GameLoop() {
     const dt = Math.min(rawDt, 0.05);
     const status = useGame.getState().status;
     if (status === 'playing') updatePlaying(dt);
-    else if (status === 'caught') {
-      g.speed = Math.max(0, g.speed - 45 * dt); // world slows to a stop
-      g.caughtTime += dt;
-      advanceWorld(dt);
-    }
+    // 'caught' freezes the world: no distance, no obstacle or coin movement.
   });
   return null;
 }

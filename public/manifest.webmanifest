@@ -1,0 +1,31 @@
+{
+  "name": "Bhag Modi Bhag: Meme Chase",
+  "short_name": "Bhag Modi Bhag",
+  "description": "Endless runner — Modi runs from the Monster ACP. Collect coins, dodge walls and logs, survive!",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0b1526",
+  "theme_color": "#0b1526",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

@@ -6,10 +6,12 @@ import { MODEL_SCALE, PLAYER_FBX } from '../constants';
 import { g } from '../gameState';
 import { useGame } from '../store';
 
+/** The player: Modi, running down the track on the actual FBX model. */
 export function Player() {
   const fbx = useFBX(PLAYER_FBX);
   const root = useRef<THREE.Group>(null!);
   const lean = useRef<THREE.Group>(null!);
+  const facing = useRef<THREE.Group>(null!);
   const status = useGame((s) => s.status);
 
   const mixer = useMemo(() => new THREE.AnimationMixer(fbx), [fbx]);
@@ -17,38 +19,43 @@ export function Player() {
 
   useEffect(() => {
     fbx.traverse((o) => {
-      if ((o as THREE.Mesh).isMesh) { o.castShadow = true; o.frustumCulled = false; }
+      if ((o as THREE.Mesh).isMesh) {
+        o.castShadow = true;
+        o.frustumCulled = false;
+      }
     });
     run.play();
-    return () => { mixer.stopAllAction(); };
+    return () => {
+      mixer.stopAllAction();
+    };
   }, [fbx, mixer, run]);
 
-  useEffect(() => {
-    if (status === 'playing') { run.timeScale = 1; run.paused = false; }
-  }, [status, run]);
-
   useFrame((_, dt) => {
-    mixer.update(dt);
-    if (status === 'caught') run.timeScale = Math.max(0, run.timeScale - 3 * dt);
+    const caught = status === 'caught';
+    // freeze the run cycle the moment the ACP catches him
+    mixer.update(caught ? 0 : dt);
 
     root.current.position.set(g.x, g.y, 0);
-    // blink while invulnerable after a mistake
-    root.current.visible = g.invuln <= 0 || Math.floor(g.invuln * 12) % 2 === 0;
+    // blink while invulnerable after a hit
+    root.current.visible = g.invuln <= 0 || Math.floor(g.invuln * 14) % 2 === 0;
+
+    // turn around to face the camera for the caught scene
+    const turn = caught ? 0 : Math.PI;
+    facing.current.rotation.y += (turn - facing.current.rotation.y) * Math.min(1, 8 * dt);
 
     const k = Math.min(1, 12 * dt);
-    const tz = THREE.MathUtils.clamp((g.targetX - g.x) * -0.15, -0.4, 0.4); // bank into the turn
-    const tx = g.rolling ? -0.8 : 0; // forward tilt while rolling
-    const sy = g.rolling ? 0.6 : 1;
-    lean.current.rotation.z += (tz - lean.current.rotation.z) * k;
-    lean.current.rotation.x += (tx - lean.current.rotation.x) * k;
-    lean.current.scale.y += (sy - lean.current.scale.y) * k;
+    const bank = caught ? 0 : THREE.MathUtils.clamp((g.targetX - g.x) * -0.15, -0.4, 0.4);
+    const tilt = !caught && g.rolling ? -0.8 : 0;
+    const squash = !caught && g.rolling ? 0.6 : 1;
+    lean.current.rotation.z += (bank - lean.current.rotation.z) * k;
+    lean.current.rotation.x += (tilt - lean.current.rotation.x) * k;
+    lean.current.scale.y += (squash - lean.current.scale.y) * k;
   });
 
   return (
     <group ref={root}>
       <group ref={lean}>
-        {/* Mixamo characters face +z; the track runs toward -z, so turn around */}
-        <group rotation={[0, Math.PI, 0]}>
+        <group ref={facing} rotation={[0, Math.PI, 0]}>
           <primitive object={fbx} scale={MODEL_SCALE} />
         </group>
       </group>
