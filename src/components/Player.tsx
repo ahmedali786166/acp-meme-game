@@ -48,8 +48,8 @@ export function Player() {
     mixer.update(caught ? 0 : dt);
 
     root.current.position.set(g.x, g.y, 0);
-    // blink while invulnerable after a hit
-    root.current.visible = g.invuln <= 0 || Math.floor(g.invuln * 14) % 2 === 0;
+    // blink while invulnerable after a hit (but always show the caught tableau)
+    root.current.visible = caught || g.invuln <= 0 || Math.floor(g.invuln * 14) % 2 === 0;
 
     // turn around to face the camera for the caught scene
     const turn = caught ? 0 : Math.PI;
@@ -67,7 +67,7 @@ export function Player() {
     const { upper, lower, hand } = arm.current;
     if (caught && upper && lower && hand) {
       root.current.updateWorldMatrix(true, true);
-      panicTarget.current.set(g.x + 0.34, 1.66, 0.18);
+      panicTarget.current.set(g.x + 0.36, 1.78, 0.18);
       solveArm(upper, lower, hand, panicTarget.current);
     }
   });

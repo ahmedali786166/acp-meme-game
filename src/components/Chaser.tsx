@@ -23,7 +23,13 @@ export function Chaser() {
     lower: null,
     hand: null,
   });
+  const leftArm = useRef<{ upper: THREE.Bone | null; lower: THREE.Bone | null; hand: THREE.Bone | null }>({
+    upper: null,
+    lower: null,
+    hand: null,
+  });
   const shoulderTarget = useRef(new THREE.Vector3());
+  const raisedTarget = useRef(new THREE.Vector3());
 
   const mixer = useMemo(() => new THREE.AnimationMixer(model), [model]);
   const run = useMemo(() => mixer.clipAction(animations[0]), [mixer, animations]);
@@ -41,6 +47,11 @@ export function Chaser() {
       upper: findBone(model, 'RightArm'),
       lower: findBone(model, 'RightForeArm'),
       hand: findBone(model, 'RightHand'),
+    };
+    leftArm.current = {
+      upper: findBone(model, 'LeftArm'),
+      lower: findBone(model, 'LeftForeArm'),
+      hand: findBone(model, 'LeftHand'),
     };
     return () => {
       mixer.stopAllAction();
@@ -86,16 +97,16 @@ export function Chaser() {
     // during play the gap tightens with every life lost
     g.chaserGap += (g.chaserGapTarget - g.chaserGap) * Math.min(1, 2.5 * dt);
 
-    // caught: step to Modi's right side, right next to him
-    const targetX = caught ? g.x + 0.55 : g.x;
-    const targetZ = caught ? 0.12 : g.chaserGap;
+    // caught: slip just behind Modi's right shoulder for the grab
+    const targetX = caught ? g.x + 0.42 : g.x;
+    const targetZ = caught ? -0.05 : g.chaserGap;
     const ease = Math.min(1, (caught ? 7 : 10) * dt);
     cx.current += (targetX - cx.current) * ease;
     cz.current += (targetZ - cz.current) * ease;
     root.current.position.set(cx.current, 0, cz.current);
 
-    // turn to face the camera (and slightly toward Modi) for the grab
-    const turn = caught ? -0.28 : Math.PI;
+    // turn toward Modi so the arm wraps onto his shoulder
+    const turn = caught ? -0.5 : Math.PI;
     facing.current.rotation.y += (turn - facing.current.rotation.y) * Math.min(1, 8 * dt);
 
     const action = grab.current;
@@ -110,12 +121,18 @@ export function Chaser() {
       action.paused = true;
     }
 
-    // right hand rests on Modi's shoulder while the raised arm stays animated
+    // right hand holds Modi's shoulder; left arm opens outward like the reference
     const { upper, lower, hand } = arm.current;
     if (caught && upper && lower && hand) {
       root.current.updateWorldMatrix(true, true);
-      shoulderTarget.current.set(g.x + 0.24, 1.36, 0.08);
+      shoulderTarget.current.set(g.x + 0.12, 1.42, 0.12);
       solveArm(upper, lower, hand, shoulderTarget.current);
+
+      const left = leftArm.current;
+      if (left.upper && left.lower && left.hand) {
+        raisedTarget.current.set(g.x + 0.95, 1.88, 0.05);
+        solveArm(left.upper, left.lower, left.hand, raisedTarget.current);
+      }
     }
   });
 

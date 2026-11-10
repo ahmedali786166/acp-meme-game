@@ -28,6 +28,7 @@ function die(by?: Obstacle) {
   }
   g.speed = 0; // stop the world scrolling immediately
   g.lives = 0;
+  g.invuln = 0; // never let the hit-blink hide Modi in the caught shot
   g.chaserGapTarget = CHASER_GAPS[3];
   useGame.getState().setLives(0);
   useGame.getState().caught();
@@ -35,11 +36,11 @@ function die(by?: Obstacle) {
 
 function hitObstacle(o: Obstacle) {
   o.hit = true;
-  const solid = o.type === 'solid';
-  g.lives = solid ? 0 : Math.max(0, g.lives - 1);
+  // the tall wall hits hard, but it still only costs one life
+  g.lives = Math.max(0, g.lives - 1);
   useGame.getState().setLives(g.lives);
 
-  if (solid || g.lives === 0) {
+  if (g.lives === 0) {
     die(o);
     return;
   }
