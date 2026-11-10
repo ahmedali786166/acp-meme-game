@@ -51,6 +51,7 @@ export const g = {
   nextCoinGap: 8,
   lastFree: 0,
   caughtTime: 0,
+  knocked: null as Obstacle | null,
   chaserGap: CHASER_GAPS[0],
   chaserGapTarget: CHASER_GAPS[0],
 };
@@ -76,6 +77,7 @@ export function resetGame() {
   g.nextCoinGap = 8;
   g.lastFree = 0;
   g.caughtTime = 0;
+  g.knocked = null;
   g.chaserGap = g.chaserGapTarget = CHASER_GAPS[0];
   coinId = 0;
 }

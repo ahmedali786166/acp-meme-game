@@ -8,7 +8,15 @@ import { loadGrabClip } from '../grabClip';
 import { findBone, solveArm } from '../pose';
 import { useGame } from '../store';
 
-/** The chaser: the ACP model running behind Modi, grabbing him on caught. */
+interface ArmChain {
+  upper: THREE.Bone | null;
+  lower: THREE.Bone | null;
+  hand: THREE.Bone | null;
+}
+
+const ARRIVE_TIME = 0.95;
+
+/** The chaser: the ACP model running behind Modi, catching him on caught. */
 export function Chaser() {
   const { scene: model, animations } = useGLTF(CHASER_MODEL);
   const root = useRef<THREE.Group>(null!);
@@ -16,19 +24,13 @@ export function Chaser() {
   const status = useGame((s) => s.status);
   const cx = useRef(0);
   const cz = useRef(CHASER_GAPS[0]);
+  const runFrom = useRef({ x: 0, z: CHASER_GAPS[0] });
+  const started = useRef(false);
   const grabbed = useRef(false);
   const grabRequested = useRef(false);
-  const arm = useRef<{ upper: THREE.Bone | null; lower: THREE.Bone | null; hand: THREE.Bone | null }>({
-    upper: null,
-    lower: null,
-    hand: null,
-  });
-  const leftArm = useRef<{ upper: THREE.Bone | null; lower: THREE.Bone | null; hand: THREE.Bone | null }>({
-    upper: null,
-    lower: null,
-    hand: null,
-  });
-  const shoulderTarget = useRef(new THREE.Vector3());
+  const arm = useRef<ArmChain>({ upper: null, lower: null, hand: null });
+  const leftArm = useRef<ArmChain>({ upper: null, lower: null, hand: null });
+  const reachTarget = useRef(new THREE.Vector3());
   const raisedTarget = useRef(new THREE.Vector3());
 
   const mixer = useMemo(() => new THREE.AnimationMixer(model), [model]);
@@ -80,8 +82,10 @@ export function Chaser() {
       run.setEffectiveWeight(1);
       run.play();
       grabbed.current = false;
+      started.current = false;
       cx.current = g.x;
       cz.current = CHASER_GAPS[0];
+      facing.current.rotation.y = Math.PI;
     }
   }, [status, run]);
 
@@ -94,44 +98,64 @@ export function Chaser() {
       g.chaserGapTarget = CHASER_GAPS[0];
     }
 
-    // during play the gap tightens with every life lost
-    g.chaserGap += (g.chaserGapTarget - g.chaserGap) * Math.min(1, 2.5 * dt);
+    if (!caught) {
+      // during play the gap tightens with every life lost
+      g.chaserGap += (g.chaserGapTarget - g.chaserGap) * Math.min(1, 2.5 * dt);
+      cx.current += (g.x - cx.current) * Math.min(1, 10 * dt);
+      cz.current += (g.chaserGap - cz.current) * Math.min(1, 10 * dt);
+      root.current.position.set(cx.current, 0, cz.current);
+      facing.current.rotation.y += (Math.PI - facing.current.rotation.y) * Math.min(1, 8 * dt);
+      return;
+    }
 
-    // caught: slip just behind Modi's right shoulder for the grab
-    const targetX = caught ? g.x + 0.42 : g.x;
-    const targetZ = caught ? -0.05 : g.chaserGap;
-    const ease = Math.min(1, (caught ? 7 : 10) * dt);
-    cx.current += (targetX - cx.current) * ease;
-    cz.current += (targetZ - cz.current) * ease;
+    // caught: run up beside the fallen player and stop there
+    if (!started.current) {
+      started.current = true;
+      runFrom.current = { x: cx.current, z: cz.current };
+    }
+    const fallDir = g.x > 0 ? -1 : 1;
+    const targetX = g.x - fallDir * 0.95;
+    const targetZ = 0.55;
+    const t = Math.min(1, g.caughtTime / ARRIVE_TIME);
+    const e = 1 - Math.pow(1 - t, 3);
+    cx.current = THREE.MathUtils.lerp(runFrom.current.x, targetX, e);
+    cz.current = THREE.MathUtils.lerp(runFrom.current.z, targetZ, e);
     root.current.position.set(cx.current, 0, cz.current);
 
-    // turn toward Modi so the arm wraps onto his shoulder
-    const turn = caught ? -0.5 : Math.PI;
-    facing.current.rotation.y += (turn - facing.current.rotation.y) * Math.min(1, 8 * dt);
+    const arrived = t >= 1;
+
+    // turn to look down at him once he stops
+    const dx = g.x + fallDir * 0.55 - cx.current;
+    const dz = 0.75 - cz.current;
+    const yaw = arrived ? Math.atan2(dx, dz) : Math.PI;
+    facing.current.rotation.y += (yaw - facing.current.rotation.y) * Math.min(1, 9 * dt);
 
     const action = grab.current;
-    if (caught && !grabbed.current && action) {
+    if (arrived && !grabbed.current && action) {
       grabbed.current = true;
       // jump into the overhead-grab part of the clip and hold the pose
       action.reset();
       action.time = action.getClip().duration * 0.2;
       action.crossFadeFrom(run, 0.25, false).play();
     }
-    if (caught && action && !action.paused && action.time >= action.getClip().duration * 0.28) {
+    if (arrived && action && !action.paused && action.time >= action.getClip().duration * 0.28) {
       action.paused = true;
     }
+    if (arrived && !action) mixer.update(0);
 
-    // right hand holds Modi's shoulder; left arm opens outward like the reference
-    const { upper, lower, hand } = arm.current;
-    if (caught && upper && lower && hand) {
-      root.current.updateWorldMatrix(true, true);
-      shoulderTarget.current.set(g.x + 0.12, 1.42, 0.12);
-      solveArm(upper, lower, hand, shoulderTarget.current);
+    // right hand reaches down toward Modi; left arm stays raised like the reference
+    if (arrived) {
+      const { upper, lower, hand } = arm.current;
+      if (upper && lower && hand) {
+        root.current.updateWorldMatrix(true, true);
+        reachTarget.current.set(g.x + fallDir * 0.55, 0.35, 0.75);
+        solveArm(upper, lower, hand, reachTarget.current);
 
-      const left = leftArm.current;
-      if (left.upper && left.lower && left.hand) {
-        raisedTarget.current.set(g.x + 0.95, 1.88, 0.05);
-        solveArm(left.upper, left.lower, left.hand, raisedTarget.current);
+        const left = leftArm.current;
+        if (left.upper && left.lower && left.hand) {
+          raisedTarget.current.set(g.x - fallDir * 0.25, 1.68, 0.9);
+          solveArm(left.upper, left.lower, left.hand, raisedTarget.current);
+        }
       }
     }
   });

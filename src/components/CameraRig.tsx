@@ -1,40 +1,85 @@
 import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
+import * as THREE from 'three';
 import type { PerspectiveCamera } from 'three';
 import { g } from '../gameState';
 import { useGame } from '../store';
 
-/** Subway-Surfers style chase cam; pushes in and tightens for the caught shot. */
+const ZOOM_TIME = 1; // dramatic push-in duration
+const closePos = new THREE.Vector3();
+const closeLook = new THREE.Vector3();
+
+/** Chase cam, plus a one-second cinematic push-in on the fallen player when caught. */
 export function CameraRig() {
   const status = useGame((s) => s.status);
-  const z = useRef(9.5);
   const baseFov = useRef(0);
+  const look = useRef(new THREE.Vector3(0, 1.5, -8));
+  const wasCaught = useRef(false);
+  const startPos = useRef(new THREE.Vector3());
+  const startLook = useRef(new THREE.Vector3());
+  const startFov = useRef(65);
+  const fallDir = useRef(1);
 
-  useFrame(({ camera }, dt) => {
-    const k = Math.min(1, 5 * dt);
-    const caught = status === 'caught';
+  useFrame(({ camera, gl }, dt) => {
     const persp = camera as PerspectiveCamera;
     if (!baseFov.current) baseFov.current = persp.fov;
 
-    const targetZ = caught ? 3.6 : 9.5;
-    const targetY = caught ? 2.17 : 4.6;
-    const targetX = caught ? g.x + 0.25 : g.x * 0.55;
-    camera.position.x += (targetX - camera.position.x) * k;
-    camera.position.y += (targetY + g.y * 0.3 - camera.position.y) * k;
-    z.current += (targetZ - z.current) * k;
-    camera.position.z = z.current;
+    const caught = status === 'caught';
 
-    const targetFov = caught ? 62 : baseFov.current;
-    if (Math.abs(persp.fov - targetFov) > 0.05) {
-      persp.fov += (targetFov - persp.fov) * k;
-      persp.updateProjectionMatrix();
+    if (caught && !wasCaught.current) {
+      wasCaught.current = true;
+      startPos.current.copy(camera.position);
+      startLook.current.copy(look.current);
+      startFov.current = persp.fov;
+      fallDir.current = g.x > 0 ? -1 : 1;
+    } else if (!caught && wasCaught.current) {
+      wasCaught.current = false;
     }
 
-    if (caught) camera.lookAt(g.x + 0.25, 2.12, 0.4);
-    else camera.lookAt(g.x * 0.4, 1.5, -8);
+    if (caught) {
+      const t = Math.min(1, g.caughtTime / ZOOM_TIME);
+      const e = t * t * (3 - 2 * t); // easeInOut
+      const dir = fallDir.current;
+      // slow drift after the zoom lands, keeping the shot alive
+      const drift = THREE.MathUtils.clamp((g.caughtTime - ZOOM_TIME) / 2.5, 0, 1);
+
+      closePos.set(
+        g.x + dir * (1.35 - 0.1 * drift),
+        1.85 - 0.1 * drift,
+        4.0 - 0.3 * drift,
+      );
+      closeLook.set(g.x + dir * 0.45, 0.6, 0.55);
+
+      camera.position.lerpVectors(startPos.current, closePos, e);
+      look.current.lerpVectors(startLook.current, closeLook, e);
+      camera.lookAt(look.current);
+
+      const targetFov = THREE.MathUtils.lerp(startFov.current, 55, e);
+      if (Math.abs(persp.fov - targetFov) > 0.01) {
+        persp.fov = targetFov;
+        persp.updateProjectionMatrix();
+      }
+    } else {
+      const k = Math.min(1, 5 * dt);
+      camera.position.x += (g.x * 0.55 - camera.position.x) * k;
+      camera.position.y += (4.6 + g.y * 0.3 - camera.position.y) * k;
+      camera.position.z += (9.5 - camera.position.z) * k;
+
+      look.current.x += (g.x * 0.4 - look.current.x) * k;
+      look.current.y += (1.5 - look.current.y) * k;
+      look.current.z += (-8 - look.current.z) * k;
+      camera.lookAt(look.current);
+
+      if (Math.abs(persp.fov - baseFov.current) > 0.01) {
+        persp.fov += (baseFov.current - persp.fov) * k;
+        persp.updateProjectionMatrix();
+      }
+    }
 
     if (import.meta.env.DEV) {
-      (window as unknown as Record<string, unknown>).__cam = camera;
+      const dev = window as unknown as Record<string, unknown>;
+      dev.__cam = camera;
+      dev.__gl = gl;
     }
   });
 

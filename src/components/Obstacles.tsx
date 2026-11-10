@@ -3,31 +3,9 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { LANE_W, LOG, SOLID_WALL, WALL } from '../constants';
 import { g } from '../gameState';
-import { useGame } from '../store';
 import { getCityAssets, type CityAssets } from '../cityAssets';
 
 const POOL = 20;
-
-function makeBrickTexture() {
-  const canvas = document.createElement('canvas');
-  canvas.width = 128;
-  canvas.height = 128;
-  const c = canvas.getContext('2d')!;
-  c.fillStyle = '#7d2b1c'; // mortar
-  c.fillRect(0, 0, 128, 128);
-  const bh = 16;
-  for (let row = 0; row < 8; row++) {
-    const offset = (row % 2) * 16;
-    for (let col = -1; col < 5; col++) {
-      c.fillStyle = (row + col) % 3 === 0 ? '#b4442f' : '#c2503a';
-      c.fillRect(offset + col * 32 + 2, row * bh + 2, 28, bh - 4);
-    }
-  }
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-  tex.anisotropy = 4;
-  return tex;
-}
 
 interface ObstacleMats {
   frame: THREE.MeshStandardMaterial;
@@ -46,18 +24,11 @@ interface ObstacleMats {
 
 /**
  * Fixed pool of meshes re-positioned every frame from g.obstacles.
- * Child order per slot: [barricade, jersey barrier, parked truck, caught brick wall]
+ * Child order per slot: [barricade, jersey barrier, parked truck]
  */
 export function Obstacles() {
   const refs = useRef<(THREE.Group | null)[]>([]);
   const assets = useMemo(getCityAssets, []);
-  const bricks = useMemo(makeBrickTexture, []);
-  const wallMap = useMemo(() => {
-    const tex = bricks.clone();
-    tex.needsUpdate = true;
-    tex.repeat.set(2.4, 1);
-    return tex;
-  }, [bricks]);
 
   const mats = useMemo<ObstacleMats>(() => {
     const sprite = (color: string, opacity: number) =>
@@ -97,7 +68,6 @@ export function Obstacles() {
     mats.amber.color.setRGB(pulse, 0.69 * pulse, 0.18 * pulse);
     mats.amberGlow.opacity = 0.2 + 0.5 * pulse;
 
-    const caught = useGame.getState().status === 'caught';
     for (let i = 0; i < POOL; i++) {
       const group = refs.current[i];
       if (!group) continue;
@@ -108,12 +78,9 @@ export function Obstacles() {
       }
       group.visible = true;
       group.position.set(obstacle.x ?? obstacle.lane * LANE_W, 0, obstacle.z);
-      const caughtWall = obstacle.type === 'wall' && obstacle.hit && caught;
-      group.scale.x = caughtWall ? 0.3 : 1;
-      group.children[0].visible = obstacle.type === 'wall' && !caughtWall;
+      group.children[0].visible = obstacle.type === 'wall';
       group.children[1].visible = obstacle.type === 'log';
       group.children[2].visible = obstacle.type === 'solid';
-      group.children[3].visible = caughtWall;
     }
   });
 
@@ -129,9 +96,6 @@ export function Obstacles() {
           </group>
           <group>
             <ParkedTruck assets={assets} mats={mats} />
-          </group>
-          <group>
-            <BrickWall map={wallMap} />
           </group>
         </group>
       ))}
@@ -266,21 +230,6 @@ function ParkedTruck({ assets, mats }: { assets: CityAssets; mats: ObstacleMats 
           scale={[0.1, 0.06, 0.05]}
         />
       ))}
-    </>
-  );
-}
-
-function BrickWall({ map }: { map: THREE.Texture }) {
-  return (
-    <>
-      <mesh position={[0, WALL.height / 2, 0]} castShadow receiveShadow>
-        <boxGeometry args={[WALL.halfW * 2, WALL.height, WALL.depth]} />
-        <meshStandardMaterial map={map} roughness={0.95} />
-      </mesh>
-      <mesh position={[0, WALL.height + 0.06, 0]} castShadow>
-        <boxGeometry args={[WALL.halfW * 2 + 0.08, 0.12, WALL.depth + 0.08]} />
-        <meshStandardMaterial color="#ea7a1c" roughness={0.75} />
-      </mesh>
     </>
   );
 }

@@ -65,8 +65,8 @@ export const useGame = create<GameStore>((set, get) => ({
       // storage can be unavailable (private mode)
     }
     set({ status: 'caught', best });
-    // let the chaser arrive, turn, grab and hold before the score panel appears
-    gameOverTimer = window.setTimeout(() => set({ showGameOver: true }), 3200);
+    // let the fall, chaser arrival and camera push-in play out before the panel
+    gameOverTimer = window.setTimeout(() => set({ showGameOver: true }), 1500);
   },
 
   setDistance: (distance) => set({ distance }),

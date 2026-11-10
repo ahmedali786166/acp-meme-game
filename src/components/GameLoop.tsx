@@ -18,18 +18,13 @@ function advanceWorld(dt: number) {
 }
 
 function die(by?: Obstacle) {
-  if (by) {
-    // stage the lethal obstacle in front of the pair, like the reference shot:
-    // the two characters face the camera from behind a waist-high brick wall
-    by.type = 'wall';
-    by.hit = true;
-    by.z = 1.15;
-    by.x = g.x + 0.25;
-  }
-  g.speed = 0; // stop the world scrolling immediately
+  // freeze the run instantly; the hit prop is knocked clear of the fall
+  if (by) by.hit = true;
+  g.knocked = by ?? null;
+  g.speed = 0;
   g.lives = 0;
-  g.invuln = 0; // never let the hit-blink hide Modi in the caught shot
-  g.chaserGapTarget = CHASER_GAPS[3];
+  g.invuln = 0;
+  g.caughtTime = 0;
   useGame.getState().setLives(0);
   useGame.getState().caught();
 }
@@ -151,8 +146,17 @@ export function GameLoop() {
   useFrame((_, rawDt) => {
     const dt = Math.min(rawDt, 0.05);
     const status = useGame.getState().status;
-    if (status === 'playing') updatePlaying(dt);
-    // 'caught' freezes the world: no distance, no obstacle or coin movement.
+    if (status === 'playing') {
+      updatePlaying(dt);
+      return;
+    }
+    if (status === 'caught') {
+      // drives the fall / camera / chaser timeline; the world itself stays frozen
+      g.caughtTime += dt;
+      if (g.knocked) {
+        g.knocked.z += (-2.3 - g.knocked.z) * Math.min(1, 10 * dt);
+      }
+    }
   });
   return null;
 }

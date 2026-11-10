@@ -27,7 +27,7 @@ function finish(tex: THREE.CanvasTexture, repeatX = 1, repeatY = 1) {
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
   tex.repeat.set(repeatX, repeatY);
-  tex.anisotropy = 8;
+  tex.anisotropy = 4;
   return tex;
 }
 
@@ -384,7 +384,7 @@ export function getCityAssets(): CityAssets {
     guardMat: new THREE.MeshStandardMaterial({ color: '#8d959f', metalness: 0.85, roughness: 0.35 }),
     postMat: new THREE.MeshStandardMaterial({ color: '#3b3f46', metalness: 0.5, roughness: 0.6 }),
     binMat: new THREE.MeshStandardMaterial({ color: '#2c4a3c', metalness: 0.3, roughness: 0.8 }),
-    manholeMat: new THREE.MeshStandardMaterial({ color: '#25272b', metalness: 0.6, roughness: 0.7 }),
+    manholeMat: new THREE.MeshStandardMaterial({ color: '#34373d', metalness: 0.45, roughness: 0.85 }),
     lampMat: new THREE.MeshStandardMaterial({
       color: '#ffd9a0',
       emissive: '#ffb35c',

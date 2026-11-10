@@ -144,39 +144,93 @@ function LoadingScreen() {
   );
 }
 
-export function UI() {
-  const status = useGame((s) => s.status);
+function Hud() {
   const distance = useGame((s) => s.distance);
   const coins = useGame((s) => s.coins);
   const lives = useGame((s) => s.lives);
+  return (
+    <div className="hud">
+      <div className="hud-hearts">
+        {Array.from({ length: START_LIVES }, (_, i) => (
+          <Heart key={i} filled={i < lives} />
+        ))}
+      </div>
+      <div className="hud-right">
+        <div className="score-chip">
+          <span className="score-mult">x1</span>
+          <span className="score-value">{String(distance).padStart(6, '0')}</span>
+        </div>
+        <div className="coin-chip">
+          <span className="coin-value">{coins}</span>
+          <Coin />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CaughtScreen() {
+  const distance = useGame((s) => s.distance);
+  const coins = useGame((s) => s.coins);
+  const start = useGame((s) => s.start);
+  const { installed, toast, install } = useInstallPrompt();
+
+  return (
+    <div className="overlay caught">
+      <div className="save-card">
+        <div className="save-timer" aria-hidden>
+          <i />
+        </div>
+        <h1 className="caught-title">CAUGHT!</h1>
+        <p className="caught-sub">The Monster ACP got you.</p>
+        <div className="stat-rows">
+          <div className="stat-row">
+            <span>Distance</span>
+            <b>{distance} m</b>
+          </div>
+          <div className="stat-row">
+            <span>Coins</span>
+            <b className="stat-coins">
+              <Coin />
+              {coins}
+            </b>
+          </div>
+        </div>
+        <button className="save-btn green" onClick={start}>
+          Run Again
+          <span className="btn-badge">
+            <PlayIcon />
+          </span>
+        </button>
+        <button className="save-btn purple" onClick={() => void inviteFriends()}>
+          Invite Friends
+          <span className="btn-badge">
+            <ShareIcon />
+          </span>
+        </button>
+        {!installed && (
+          <button className="install-chip" onClick={install}>
+            <InstallIcon />
+            Install
+          </button>
+        )}
+        {toast && <p className="toast">{toast}</p>}
+      </div>
+    </div>
+  );
+}
+
+export function UI() {
+  const status = useGame((s) => s.status);
   const best = useGame((s) => s.best);
   const showGameOver = useGame((s) => s.showGameOver);
   const start = useGame((s) => s.start);
   const { progress } = useProgress();
   const ready = progress >= 100;
-  const { installed, toast, install } = useInstallPrompt();
 
   return (
     <div className="ui">
-      {status === 'playing' && (
-        <div className="hud">
-          <div className="hud-hearts">
-            {Array.from({ length: START_LIVES }, (_, i) => (
-              <Heart key={i} filled={i < lives} />
-            ))}
-          </div>
-          <div className="hud-right">
-            <div className="score-chip">
-              <span className="score-mult">x1</span>
-              <span className="score-value">{String(distance).padStart(6, '0')}</span>
-            </div>
-            <div className="coin-chip">
-              <span className="coin-value">{coins}</span>
-              <Coin />
-            </div>
-          </div>
-        </div>
-      )}
+      {status === 'playing' && <Hud />}
 
       {status === 'menu' && (
         <>
@@ -206,49 +260,7 @@ export function UI() {
         </>
       )}
 
-      {status === 'caught' && showGameOver && (
-        <div className="overlay caught">
-          <div className="save-card">
-            <div className="save-timer" aria-hidden>
-              <i />
-            </div>
-            <h1 className="caught-title">CAUGHT!</h1>
-            <p className="caught-sub">The Monster ACP got you.</p>
-            <div className="stat-rows">
-              <div className="stat-row">
-                <span>Distance</span>
-                <b>{distance} m</b>
-              </div>
-              <div className="stat-row">
-                <span>Coins</span>
-                <b className="stat-coins">
-                  <Coin />
-                  {coins}
-                </b>
-              </div>
-            </div>
-            <button className="save-btn green" onClick={start}>
-              Run Again
-              <span className="btn-badge">
-                <PlayIcon />
-              </span>
-            </button>
-            <button className="save-btn purple" onClick={() => void inviteFriends()}>
-              Invite Friends
-              <span className="btn-badge">
-                <ShareIcon />
-              </span>
-            </button>
-            {!installed && (
-              <button className="install-chip" onClick={install}>
-                <InstallIcon />
-                Install
-              </button>
-            )}
-            {toast && <p className="toast">{toast}</p>}
-          </div>
-        </div>
-      )}
+      {status === 'caught' && showGameOver && <CaughtScreen />}
     </div>
   );
 }
