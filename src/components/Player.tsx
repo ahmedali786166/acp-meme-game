@@ -4,6 +4,7 @@ import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import { MODEL_SCALE, PLAYER_MODEL } from '../constants';
 import { g } from '../gameState';
+import { findBone, solveArm } from '../pose';
 import { useGame } from '../store';
 
 /** The player: Modi, running down the track on the actual model. */
@@ -13,6 +14,12 @@ export function Player() {
   const lean = useRef<THREE.Group>(null!);
   const facing = useRef<THREE.Group>(null!);
   const status = useGame((s) => s.status);
+  const arm = useRef<{ upper: THREE.Bone | null; lower: THREE.Bone | null; hand: THREE.Bone | null }>({
+    upper: null,
+    lower: null,
+    hand: null,
+  });
+  const panicTarget = useRef(new THREE.Vector3());
 
   const mixer = useMemo(() => new THREE.AnimationMixer(model), [model]);
   const run = useMemo(() => mixer.clipAction(animations[0]), [mixer, animations]);
@@ -25,6 +32,11 @@ export function Player() {
       }
     });
     run.play();
+    arm.current = {
+      upper: findBone(model, 'LeftArm'),
+      lower: findBone(model, 'LeftForeArm'),
+      hand: findBone(model, 'LeftHand'),
+    };
     return () => {
       mixer.stopAllAction();
     };
@@ -44,12 +56,20 @@ export function Player() {
     facing.current.rotation.y += (turn - facing.current.rotation.y) * Math.min(1, 8 * dt);
 
     const k = Math.min(1, 12 * dt);
-    const bank = caught ? 0 : THREE.MathUtils.clamp((g.targetX - g.x) * -0.15, -0.4, 0.4);
+    const bank = caught ? 0.07 : THREE.MathUtils.clamp((g.targetX - g.x) * -0.15, -0.4, 0.4);
     const tilt = !caught && g.rolling ? -0.8 : 0;
     const squash = !caught && g.rolling ? 0.6 : 1;
     lean.current.rotation.z += (bank - lean.current.rotation.z) * k;
     lean.current.rotation.x += (tilt - lean.current.rotation.x) * k;
     lean.current.scale.y += (squash - lean.current.scale.y) * k;
+
+    // panic arm thrown up toward the ACP, like the reference caught shot
+    const { upper, lower, hand } = arm.current;
+    if (caught && upper && lower && hand) {
+      root.current.updateWorldMatrix(true, true);
+      panicTarget.current.set(g.x + 0.34, 1.66, 0.18);
+      solveArm(upper, lower, hand, panicTarget.current);
+    }
   });
 
   return (

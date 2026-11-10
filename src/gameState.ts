@@ -10,6 +10,7 @@ export interface Obstacle {
   lane: number; // -1, 0, 1
   z: number; // centre z (moves toward +z, the player sits at z = 0)
   hit: boolean;
+  x?: number; // optional world x override (used to centre the caught wall)
 }
 
 export interface Coin {

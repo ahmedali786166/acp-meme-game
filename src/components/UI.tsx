@@ -66,7 +66,6 @@ export function UI() {
   const distance = useGame((s) => s.distance);
   const coins = useGame((s) => s.coins);
   const lives = useGame((s) => s.lives);
-  const best = useGame((s) => s.best);
   const showGameOver = useGame((s) => s.showGameOver);
   const start = useGame((s) => s.start);
   const { progress } = useProgress();
@@ -108,26 +107,18 @@ export function UI() {
 
       {status === 'caught' && showGameOver && (
         <div className="overlay caught">
-          <div className="caught-head">
+          <div className="caught-card">
             <h1 className="caught-title">CAUGHT!</h1>
-            <p className="big">The Monster ACP got you.</p>
-          </div>
-          <div className="caught-foot">
-            <div className="stats">
-              <div>
-                <span>{distance} m</span>
-                <small>DISTANCE</small>
-              </div>
-              <div>
-                <span>{coins}</span>
-                <small>COINS</small>
-              </div>
-              <div>
-                <span>{best} m</span>
-                <small>BEST</small>
-              </div>
-            </div>
-            <button onClick={start}>RUN AGAIN</button>
+            <p className="caught-sub">The Monster ACP got you.</p>
+            <p className="caught-line">
+              Distance: <b>{distance}m</b>
+            </p>
+            <p className="caught-line">
+              Coins Collected: <b>{coins}</b>
+            </p>
+            <button className="run-again" onClick={start}>
+              RUN AGAIN
+            </button>
             <InstallInvite />
           </div>
         </div>

@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { CHASER_MODEL, CHASER_GAPS, MODEL_SCALE } from '../constants';
 import { g } from '../gameState';
 import { loadGrabClip } from '../grabClip';
+import { findBone, solveArm } from '../pose';
 import { useGame } from '../store';
 
 /** The chaser: the ACP model running behind Modi, grabbing him on caught. */
@@ -17,6 +18,12 @@ export function Chaser() {
   const cz = useRef(CHASER_GAPS[0]);
   const grabbed = useRef(false);
   const grabRequested = useRef(false);
+  const arm = useRef<{ upper: THREE.Bone | null; lower: THREE.Bone | null; hand: THREE.Bone | null }>({
+    upper: null,
+    lower: null,
+    hand: null,
+  });
+  const shoulderTarget = useRef(new THREE.Vector3());
 
   const mixer = useMemo(() => new THREE.AnimationMixer(model), [model]);
   const run = useMemo(() => mixer.clipAction(animations[0]), [mixer, animations]);
@@ -30,6 +37,11 @@ export function Chaser() {
       }
     });
     run.play();
+    arm.current = {
+      upper: findBone(model, 'RightArm'),
+      lower: findBone(model, 'RightForeArm'),
+      hand: findBone(model, 'RightHand'),
+    };
     return () => {
       mixer.stopAllAction();
     };
@@ -74,26 +86,36 @@ export function Chaser() {
     // during play the gap tightens with every life lost
     g.chaserGap += (g.chaserGapTarget - g.chaserGap) * Math.min(1, 2.5 * dt);
 
-    // caught: step to Modi's side, right next to him
-    const targetX = caught ? g.x + 0.32 : g.x;
-    const targetZ = caught ? 0.18 : g.chaserGap;
+    // caught: step to Modi's right side, right next to him
+    const targetX = caught ? g.x + 0.55 : g.x;
+    const targetZ = caught ? 0.12 : g.chaserGap;
     const ease = Math.min(1, (caught ? 7 : 10) * dt);
     cx.current += (targetX - cx.current) * ease;
     cz.current += (targetZ - cz.current) * ease;
     root.current.position.set(cx.current, 0, cz.current);
 
     // turn to face the camera (and slightly toward Modi) for the grab
-    const turn = caught ? -0.35 : Math.PI;
+    const turn = caught ? -0.28 : Math.PI;
     facing.current.rotation.y += (turn - facing.current.rotation.y) * Math.min(1, 8 * dt);
 
     const action = grab.current;
     if (caught && !grabbed.current && action) {
       grabbed.current = true;
-      action.reset().crossFadeFrom(run, 0.2, false).play();
+      // jump into the overhead-grab part of the clip and hold the pose
+      action.reset();
+      action.time = action.getClip().duration * 0.2;
+      action.crossFadeFrom(run, 0.25, false).play();
     }
-    // hold the reach pose instead of clamping on an arms-down end frame
-    if (caught && action && !action.paused && action.time >= action.getClip().duration * 0.22) {
+    if (caught && action && !action.paused && action.time >= action.getClip().duration * 0.28) {
       action.paused = true;
+    }
+
+    // right hand rests on Modi's shoulder while the raised arm stays animated
+    const { upper, lower, hand } = arm.current;
+    if (caught && upper && lower && hand) {
+      root.current.updateWorldMatrix(true, true);
+      shoulderTarget.current.set(g.x + 0.24, 1.36, 0.08);
+      solveArm(upper, lower, hand, shoulderTarget.current);
     }
   });
 

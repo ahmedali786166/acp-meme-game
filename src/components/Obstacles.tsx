@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { LANE_W, LOG, SOLID_WALL, WALL } from '../constants';
 import { g } from '../gameState';
+import { useGame } from '../store';
 
 const POOL = 20;
 
@@ -48,6 +49,7 @@ export function Obstacles() {
   }, [bricks]);
 
   useFrame(() => {
+    const caught = useGame.getState().status === 'caught';
     for (let i = 0; i < POOL; i++) {
       const group = refs.current[i];
       if (!group) continue;
@@ -57,7 +59,8 @@ export function Obstacles() {
         continue;
       }
       group.visible = true;
-      group.position.set(obstacle.lane * LANE_W, 0, obstacle.z);
+      group.position.set(obstacle.x ?? obstacle.lane * LANE_W, 0, obstacle.z);
+      group.scale.x = obstacle.hit && caught ? 0.3 : 1;
       group.children[0].visible = obstacle.type === 'wall';
       group.children[1].visible = obstacle.type === 'log';
       group.children[2].visible = obstacle.type === 'solid';
@@ -86,7 +89,7 @@ function BrickWall({ map }: { map: THREE.Texture }) {
       </mesh>
       <mesh position={[0, WALL.height + 0.06, 0]} castShadow>
         <boxGeometry args={[WALL.halfW * 2 + 0.08, 0.12, WALL.depth + 0.08]} />
-        <meshStandardMaterial color="#e8dcc8" />
+        <meshStandardMaterial color="#ea7a1c" roughness={0.75} />
       </mesh>
     </group>
   );

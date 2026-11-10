@@ -21,9 +21,10 @@ function die(by?: Obstacle) {
   if (by) {
     // stage the lethal obstacle in front of the pair, like the reference shot:
     // the two characters face the camera from behind a waist-high brick wall
-    by.type = by.type === 'solid' ? 'wall' : by.type;
+    by.type = 'wall';
     by.hit = true;
     by.z = 1.15;
+    by.x = g.x + 0.25;
   }
   g.speed = 0; // stop the world scrolling immediately
   g.lives = 0;
