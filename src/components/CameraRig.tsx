@@ -7,9 +7,7 @@ import { useGame } from '../store';
 /** Subway-Surfers style chase cam; pushes in and tightens for the caught shot. */
 export function CameraRig() {
   const status = useGame((s) => s.status);
-  // null until the first frame so the chase cam glides in from wherever the
-  // menu diorama left the camera instead of snapping to the runner position
-  const z = useRef<number | null>(null);
+  const z = useRef(9.5);
   const baseFov = useRef(0);
 
   useFrame(({ camera }, dt) => {
@@ -17,7 +15,6 @@ export function CameraRig() {
     const caught = status === 'caught';
     const persp = camera as PerspectiveCamera;
     if (!baseFov.current) baseFov.current = persp.fov;
-    if (z.current === null) z.current = camera.position.z;
 
     const targetZ = caught ? 3.6 : 9.5;
     const targetY = caught ? 2.17 : 4.6;
