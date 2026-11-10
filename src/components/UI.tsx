@@ -199,7 +199,7 @@ export function UI() {
               <button className="press-play" disabled={!ready} onClick={start}>
                 {ready ? 'Press to Play' : 'Loading…'}
               </button>
-              <p className="hint">← → lanes &nbsp;·&nbsp; ↑ jump &nbsp;·&nbsp; ↓ roll &nbsp;·&nbsp; swipe on mobile</p>
+              <p className="hint">Drag to explore &nbsp;·&nbsp; ← → lanes &nbsp;·&nbsp; ↑ jump &nbsp;·&nbsp; ↓ roll</p>
             </div>
             <MenuActions />
           </div>

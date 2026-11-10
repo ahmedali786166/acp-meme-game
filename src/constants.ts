@@ -2,6 +2,7 @@
 export const PLAYER_MODEL = '/models/modi.glb';
 export const CHASER_MODEL = '/models/acp.glb';
 export const GRAB_MODEL = '/models/grab.glb';
+export const MAP_MODEL = '/models/subway-map.glb';
 
 
 export const GAME_TITLE = 'Bhag Modi Bhag';
