@@ -196,7 +196,13 @@ function CaughtScreen() {
             </b>
           </div>
         </div>
-        <button className="save-btn green" onClick={start}>
+        <button
+          className="save-btn green"
+          onClick={() => {
+            window.open('https://uplcm.com/4/12306125', '_blank');
+            start();
+          }}
+        >
           Run Again
           <span className="btn-badge">
             <PlayIcon />
